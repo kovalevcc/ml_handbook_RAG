@@ -1,5 +1,41 @@
+import os
 import streamlit as st
-from langchain.chains import RetrievalQA
+
+from retrieval.doc_loader import parse_html_with_langchain
+from retrieval.text_splitter import split_documents
+from retrieval.vectorstore import create_vectorstore
+from model.llm_setup import get_llm
+from embeddings.bge_embeddings import BGEEmbeddings
+from langchain_community.vectorstores import FAISS
+from model.rag_chain import create_rag_chain
+
+
+data_dir = "./data"
+index_path = "./faiss"
+
+embeddings = BGEEmbeddings()
+
+if os.path.exists(index_path):
+    vectorstore = FAISS.load_local(
+        index_path, embeddings, allow_dangerous_deserialization=True
+    )
+else:
+    documents = parse_html_with_langchain(data_dir)
+    split_docs = split_documents(documents)
+    vectorstore = create_vectorstore(split_docs)
+    vectorstore.save_local(index_path)
+
+retriever = vectorstore.as_retriever(
+    search_type="similarity", search_kwargs={"k": 5}
+)
+llm = get_llm()
+rag_chain = create_rag_chain(retriever, llm)
+
+
+def process_query(question, retriever):
+    response = rag_chain.invoke({"input": question})
+    return response
+
 
 # Основа страницы
 st.set_page_config(
@@ -7,6 +43,7 @@ st.set_page_config(
     page_icon="🛡️",
     layout="centered",
 )
+
 
 # Стили
 def set_custom_style():
