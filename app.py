@@ -1,4 +1,5 @@
 import os
+import json
 import streamlit as st
 
 from retrieval.doc_loader import parse_html_with_langchain
@@ -9,30 +10,61 @@ from embeddings.bge_embeddings import BGEEmbeddings
 from langchain_community.vectorstores import FAISS
 from model.rag_chain import create_rag_chain
 
-
-data_dir = "./data"
-index_path = "./faiss"
-
-embeddings = BGEEmbeddings()
-
-if os.path.exists(index_path):
-    vectorstore = FAISS.load_local(
-        index_path, embeddings, allow_dangerous_deserialization=True
-    )
-else:
-    documents = parse_html_with_langchain(data_dir)
-    split_docs = split_documents(documents)
-    vectorstore = create_vectorstore(split_docs)
-    vectorstore.save_local(index_path)
-
-retriever = vectorstore.as_retriever(
-    search_type="similarity", search_kwargs={"k": 5}
-)
-llm = get_llm()
-rag_chain = create_rag_chain(retriever, llm)
+DATA_DIR = "./data"
+INDEX_PATH = "./faiss"
+FILENAME2URL_PATH = os.path.join(DATA_DIR, "filename2url.json")
 
 
-def process_query(question, retriever):
+@st.cache_data(show_spinner=False)
+def load_filename2url(path: str) -> dict:
+    """Загружает словарь filename->url из JSON"""
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+@st.cache_data(show_spinner=False)
+def get_vectorstore(index_path: str, data_dir: str):
+    """
+    Возвращает загруженный либо заново созданный векторный индекс FAISS.
+    Кэшируем результат, чтобы при повторном запуске не пересоздавать.
+    """
+    embeddings = BGEEmbeddings()
+
+    if os.path.exists(index_path):
+        vectorstore = FAISS.load_local(
+            index_path, embeddings, allow_dangerous_deserialization=True
+        )
+    else:
+        documents = parse_html_with_langchain(data_dir)
+        split_docs = split_documents(documents)
+        vectorstore = create_vectorstore(split_docs)
+        vectorstore.save_local(index_path)
+
+    return vectorstore
+
+
+@st.cache_resource(show_spinner=False)
+def get_llm_cached():
+    """Возвращает LLM"""
+    return get_llm()
+
+
+def create_rag_chain_cached():
+    """
+    Создаёт RAG цепочку.
+    """
+    vectorstore = get_vectorstore(INDEX_PATH, DATA_DIR)
+    retriever = vectorstore.as_retriever(
+        search_type="similarity", search_kwargs={"k": 5})
+    llm = get_llm_cached()
+    return create_rag_chain(retriever, llm)
+
+
+def process_query(question: str):
+    """
+    Принимает вопрос, вызывает RAG-цепочку и возвращает результат.
+    """
+    rag_chain = create_rag_chain_cached()
     response = rag_chain.invoke({"input": question})
     return response
 
@@ -54,29 +86,45 @@ def set_custom_style():
             background-color: #f0f8ff;
             color: #021621;
         }
-        .stButton {
+
+        .stForm {
+            border: none !important;
+            box-shadow: none !important;
+            background: transparent !important;
+            padding: 0 !important;
+        }
+
+        .stButton, .stFormSubmitButton {
             display: flex;
             justify-content: center;
         }
-        .stButton>button {
+        .stButton>button, .stFormSubmitButton>button {
             background-color: #021621;
             color: white;
             padding: 18px 60px;
             border: none;
             border-radius: 10px;
             margin-top: 8px;
-            margin-right: 28px;
             display: flex;
             justify-content: center;
-            align-items: center;            
+            align-items: center;
+        }
+
+        .stTextInput>div>div {
+            border: none !important;
+            padding: 0;
+            box-shadow: none !important;
+            background: transparent !important;
         }
         .stTextInput>div>div>input {
             border: 2px solid #003366;
             border-radius: 5px;
             text-align: center;
             display: flex;
-            font-size: 18px;    
+            font-size: 18px;
+            padding: 8px;
         }
+
         .vikings-theme {
             font-family: 'Georgia', serif;
             font-size: 24px;
@@ -171,17 +219,37 @@ def main():
         '<div class="text-center">Задавайте вопросы по учебнику Яндекса о машинном обучении, и мы найдем для вас ответы!</div>',
         unsafe_allow_html=True,
     )
-
+    filename2url = load_filename2url(FILENAME2URL_PATH)
     # Ввод вопроса пользователем
-    question = st.text_input(
-        "Введите ваш вопрос:", placeholder="Например: Что такое градиентный спуск?"
-    )
-    if st.button("Найти ответ"):
+    with st.form(key="question_form"):
+        question = st.text_input(
+            "Введите ваш вопрос:",
+            placeholder="Например: Что такое градиентный спуск?"
+        )
+        submit_question = st.form_submit_button("Найти ответ")
+
+    if submit_question:
         if question.strip():
             with st.spinner("Ищем ответ..."):
-                answer = process_query(question, retriever)
+                # Запрашиваем ответ из RAG-цепочки
+                answer = process_query(question)
+                # Печатаем ответ
                 st.success("Ответ найден!")
-                st.write(answer)
+                st.write(answer.get('answer', "Не удалось получить ответ"))
+
+                context_list = answer.get("context", [])
+
+                if not context_list:
+                    st.warning(
+                        "Контекст не найден. Возможно, нет релевантных документов.")
+                else:
+                    # Берём первый документ
+                    first_source = context_list[0].metadata.get("source", "")
+                    # Находим URL
+                    mapped_url = filename2url.get(
+                        first_source, "URL not found")
+
+                    st.write(f"Узнать больше: [по ссылке]({mapped_url})")
         else:
             st.warning("Пожалуйста, введите вопрос.")
 
@@ -194,11 +262,11 @@ def main():
         <h4>❚❚❚ Что такое RAGнарёк? ❚❚❚</h4>
         <p>RAGнарёк — это интеллектуальная система, которая помогает находить ответы на вопросы, связанные с учебником Яндекса по машинному обучению (ML). Система RAGнарёк представляет собой оптимальное решение, которое сочетает в себе:</p>
         <ol>
-            <li><b>Поиск информации в учебнике Яндекса по ML:</b>  
+            <li><b>Поиск информации в учебнике Яндекса по ML:</b>
             RAG-система извлекает релевантные данные из учебника.</li>
-            <li><b>Генерацию понятных ответов:</b>  
+            <li><b>Генерацию понятных ответов:</b>
             На основе найденной информации система формирует текстовые ответы, которые легко воспринимаются пользователем.</li>
-            <li><b>Удобный интерфейс:</b>  
+            <li><b>Удобный интерфейс:</b>
             Все это реализуется в интуитивно понятном и простом веб-приложении на Streamlit. </li>
         </ol>
         <h4>❚❚ Как это поможет пользователям? ❚❚</h4>
