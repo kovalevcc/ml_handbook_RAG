@@ -1,31 +1,30 @@
 import os
 from langchain_community.chat_models.gigachat import GigaChat
-from langchain_community.llms import VLLMOpenAI
+from dotenv import load_dotenv
 
 
 def get_llm():
-    llm = VLLMOpenAI(
-        openai_api_key="EMPTY",
-        openai_api_base="http://localhost:8000/v1",
-        model_name="QWEN_AWQ",
-        max_tokens=2000,
-        model_kwargs={"stop": ["."]},
-        temperature=0.1,
-    )
-    return llm
+    """
+    Получение экземпляра модели GigaChat
 
+    Returns:
+        GigaChat: Экземпляр модели GigaChat
+    """
 
-def get_llm():
+    load_dotenv()  # загружаем переменные окружения из файла .env
+
     giga_key = os.environ.get("GIGACHAT_CREDENTIALS")
     if not giga_key:
-        raise ValueError(
-            "Не установлен SB_AUTH_DATA в окружении. Установите ключ для GigaChat.")
 
-    # Настраиваем GigaChat LLM
+        raise ValueError(
+            "Не установлен GIGACHAT_CREDENTIALS в окружении."
+            "Убедитесь, что ключ задан в .env или установлен в окружении.")
+
     llm = GigaChat(
         credentials=giga_key,
-        model="GigaChat",    # Укажите нужную модель GigaChat
+        model="GigaChat",
         timeout=30,
-        verify_ssl_certs=False
+        verify_ssl_certs=False,
+        temperature=0
     )
     return llm
