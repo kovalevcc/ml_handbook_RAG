@@ -66,6 +66,6 @@ streamlit run ./app/app.py
 
 ## Наша команда
 ![RAGnarekTeam.gif](https://github.com/kovalevcc/ml_handbook_RAG/blob/main/RAGnarekTeam.gif)
-<br>— <b>Артем Ковалев</b>
-<br>— <b>Оксана Соломенчук</b>
-<br>— <b>Вадим Паненко</b>
+<br>— <b>Артем Ковалев</b>, @kovalevcc
+<br>— <b>Оксана Соломенчук</b>, @sverhmassivnaya
+<br>— <b>Вадим Паненко</b>, @VadimPanenko
