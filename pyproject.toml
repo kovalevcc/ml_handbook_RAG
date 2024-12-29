@@ -1,0 +1,37 @@
+[tool.poetry]
+name = "ml-handbook-rag"
+version = "0.1.0"
+description = "RAG service for yandex ml handbook"
+authors = ["Artem Kovalev <artem@kovalev.cc>","Vadim Panenko","Oksana Solomenchuk"]
+readme = "README.md"
+
+packages = [
+    { include = "embeddings" },
+    { include = "retrieval" },
+    { include = "model" },
+    { include = "parser" },
+    { include = "experiments" }
+]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13"
+numpy = "1.26"
+torch = "2.3.1"
+transformers = "4.47.1"
+bert-score = "0.3.13"
+rouge-score = "0.1.2"
+nltk = "3.9.1"
+langchain = "0.2.16"
+langchain-community = "0.2.16"
+pandas = "2.0.3"
+scikit-learn = "1.6.0"
+streamlit = "1.41.1"
+python-dotenv = "1.0.1"
+selenium = "4.27.1"
+faiss-gpu = "1.7.2"
+gigachat = "0.1.36"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

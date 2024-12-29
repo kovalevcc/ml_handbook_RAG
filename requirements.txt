@@ -1,4 +1,4 @@
-numpy==1.24.4
+numpy==1.26
 torch==2.3.1
 transformers==4.47.1
 bert_score==0.3.13
@@ -13,3 +13,5 @@ python-dotenv==1.0.1
 selenium==4.27.1
 faiss-gpu==1.7.2
 gigachat==0.1.36
+ragas==0.2.8
+openai==1.51.2

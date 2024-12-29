@@ -69,6 +69,10 @@ ml_handbook_RAG/
 conda create -n handbook python=3.10.12 
 pip install -r requirements.txt
 ```
+или 
+```
+poetry install 
+```
 4. Установить переменную среды GIGACHAT_CREDENTIALS c ключем API от Gigachat.
 ```
 Содержание файла:
@@ -79,6 +83,10 @@ GIGACHAT_CREDENTIALS=*gigachat api key*
 ### Запуск
 ```
 streamlit run ./app/app.py
+```
+poetry
+```
+poetry run streamlit run app.py
 ```
 
 Для остановки приложения используйте сочетание клавиш `Ctrl + C` в терминале.
