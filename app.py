@@ -224,7 +224,7 @@ def main():
     with st.form(key="question_form"):
         question = st.text_input(
             "Введите ваш вопрос:",
-            placeholder="Например: Что такое градиентный спуск?"
+            placeholder="Например: Что такое lazy learning?"
         )
         submit_question = st.form_submit_button("Найти ответ")
 
