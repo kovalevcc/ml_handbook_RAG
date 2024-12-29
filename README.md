@@ -65,11 +65,14 @@ ml_handbook_RAG/
 ### Установка
 1. Создать среду с Python 3.10.12.
 2. Установить зависимости из файла requirements.txt
+
+**conda**
 ```
 conda create -n handbook python=3.10.12 
 pip install -r requirements.txt
 ```
-или 
+ 
+**poetry**
 ```
 poetry install 
 ```
@@ -81,10 +84,11 @@ GIGACHAT_CREDENTIALS=*gigachat api key*
 6. [Опционально] Добавить данные (html файлы) в папку data. Чтобы сгенерировать индекс заново, необходимо удалить папку faiss.
 
 ### Запуск
+**conda**
 ```
 streamlit run ./app/app.py
 ```
-poetry
+**poetry**
 ```
 poetry run streamlit run app.py
 ```
