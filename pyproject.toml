@@ -28,7 +28,7 @@ scikit-learn = "1.6.0"
 streamlit = "1.41.1"
 python-dotenv = "1.0.1"
 selenium = "4.27.1"
-faiss-gpu = "1.7.2"
+faiss-cpu  = "1.9.0"
 gigachat = "0.1.36"
 
 
