@@ -9,6 +9,7 @@ from model.llm_setup import get_llm
 from embeddings.bge_embeddings import BGEEmbeddings
 from langchain_community.vectorstores import FAISS
 from model.rag_chain import create_rag_chain
+from retrieval.threshold_retriever import ThresholdRetriever
 
 DATA_DIR = "./data"
 INDEX_PATH = "./faiss"
@@ -49,20 +50,28 @@ def get_llm_cached():
     return get_llm()
 
 
-def create_rag_chain_cached():
+def create_rag_chain_cached(k: int = 5):
     """
-    Создаёт RAG цепочку.
+    Создаёт RAG-цепочку, используя кастомный ThresholdRetriever.
+    k — максимальное число документов для поиска.
     """
     vectorstore = get_vectorstore(INDEX_PATH, DATA_DIR)
-    retriever = vectorstore.as_retriever(
-        search_type="similarity", search_kwargs={"k": 5})
+    embeddings = BGEEmbeddings()
+
+    retriever = ThresholdRetriever(
+        vectorstore=vectorstore,
+        embeddings=embeddings,
+        k=k
+    )
+
     llm = get_llm_cached()
     return create_rag_chain(retriever, llm)
 
 
 def process_query(question: str):
     """
-    Принимает вопрос, вызывает RAG-цепочку и возвращает результат.
+    Вызывает RAG-цепочку.
+    Если релевантных документов нет, то возвращает пустой контекст.
     """
     rag_chain = create_rag_chain_cached()
     response = rag_chain.invoke({"input": question})
@@ -219,8 +228,10 @@ def main():
         '<div class="text-center">Задавайте вопросы по учебнику Яндекса о машинном обучении, и мы найдем для вас ответы!</div>',
         unsafe_allow_html=True,
     )
+
     filename2url = load_filename2url(FILENAME2URL_PATH)
-    # Ввод вопроса пользователем
+
+    # Форма вопроса
     with st.form(key="question_form"):
         question = st.text_input(
             "Введите ваш вопрос:",
@@ -233,23 +244,19 @@ def main():
             with st.spinner("Ищем ответ..."):
                 # Запрашиваем ответ из RAG-цепочки
                 answer = process_query(question)
-                # Печатаем ответ
-                st.success("Ответ найден!")
-                st.write(answer.get('answer', "Не удалось получить ответ"))
-
                 context_list = answer.get("context", [])
 
                 if not context_list:
-                    st.warning(
-                        "Контекст не найден. Возможно, нет релевантных документов.")
+                    st.warning("Не нашлось релевантных документов.")
                 else:
-                    # Берём первый документ
-                    first_source = context_list[0].metadata.get("source", "")
-                    # Находим URL
-                    mapped_url = filename2url.get(
-                        first_source, "URL not found")
+                    st.success("Ответ найден!")
+                    st.write(answer.get('answer', "Не удалось получить ответ"))
 
-                    st.write(f"Узнать больше: [по ссылке]({mapped_url})")
+                    # Показываем ссылку на первый источник
+                    first_source = context_list[0].metadata.get("source", "")
+                    mapped_url = filename2url.get(first_source, "")
+                    if mapped_url:
+                        st.write(f"Узнать больше: [по ссылке]({mapped_url})")
         else:
             st.warning("Пожалуйста, введите вопрос.")
 
